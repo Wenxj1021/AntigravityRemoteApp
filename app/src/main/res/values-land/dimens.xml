@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 横屏模式下的设置悬浮按钮固定坐标 -->
+    <dimen name="fab_margin_end">16dp</dimen>
+    <dimen name="fab_margin_bottom">20dp</dimen>
+</resources>

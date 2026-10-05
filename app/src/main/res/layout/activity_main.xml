@@ -92,15 +92,15 @@
 
     </LinearLayout>
 
-    <!-- Material 3 菜单悬浮按钮（竖屏紧贴输入框上方，横屏吸附右下角，不可拖动） -->
+    <!-- Material 3 菜单悬浮按钮（坐标写死固定：竖屏与横屏通过资源限定符分别设定固定坐标，无动态检测移动） -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabSettings"
         style="@style/Widget.Material3.FloatingActionButton.Small.Surface"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="94dp"
+        android:layout_marginEnd="@dimen/fab_margin_end"
+        android:layout_marginBottom="@dimen/fab_margin_bottom"
         android:contentDescription="@string/menu_title"
         android:src="@drawable/ic_settings"
         app:backgroundTint="?attr/colorSurfaceContainerHigh"

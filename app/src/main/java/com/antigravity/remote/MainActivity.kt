@@ -68,27 +68,6 @@ class MainActivity : AppCompatActivity() {
         getSharedPreferences("antigravity_remote_prefs", Context.MODE_PRIVATE)
     }
 
-    private var systemBarsBottom = 0
-    private var systemBarsRight = 0
-    private var lastSendBoxRightRatio: Float? = null
-    private var lastSendBoxCenterYFromBottomRatio: Float? = null
-
-    private fun applySendBoxBounds(
-        left: Float,
-        top: Float,
-        right: Float,
-        bottom: Float,
-        width: Float,
-        height: Float,
-        windowWidth: Float,
-        windowHeight: Float
-    ) {
-        if (windowWidth <= 0 || windowHeight <= 0) return
-        lastSendBoxRightRatio = right / windowWidth
-        lastSendBoxCenterYFromBottomRatio = (windowHeight - (top + bottom) / 2f) / windowHeight
-        updateFabPosition()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivitiesIfAvailable(application)
         super.onCreate(savedInstanceState)
@@ -123,8 +102,6 @@ class MainActivity : AppCompatActivity() {
     private fun setupInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.rootContainer) { _, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            systemBarsBottom = systemBars.bottom
-            systemBarsRight = systemBars.right
             binding.rootContainer.updatePadding(
                 top = systemBars.top,
                 bottom = systemBars.bottom,
@@ -240,22 +217,6 @@ class MainActivity : AppCompatActivity() {
                 requestNotificationPermission()
             }
         }
-
-        @JavascriptInterface
-        fun onSendBoxBoundsUpdated(
-            left: Float,
-            top: Float,
-            right: Float,
-            bottom: Float,
-            width: Float,
-            height: Float,
-            windowWidth: Float,
-            windowHeight: Float
-        ) {
-            runOnUiThread {
-                applySendBoxBounds(left, top, right, bottom, width, height, windowWidth, windowHeight)
-            }
-        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -273,9 +234,6 @@ class MainActivity : AppCompatActivity() {
         webSettings.cacheMode = WebSettings.LOAD_DEFAULT
 
         WebView.setWebContentsDebuggingEnabled(true)
-        binding.webView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateFabPosition()
-        }
 
         webSettings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
         val cookieManager = CookieManager.getInstance()
@@ -326,60 +284,6 @@ class MainActivity : AppCompatActivity() {
                     })();
                 """.trimIndent()
                 view?.evaluateJavascript(notificationPolyfill, null)
-
-                // 注入发送框位置实时监听脚本
-                val sendBoxObserverScript = """
-                    (function() {
-                        function findSendBox() {
-                            var inputs = Array.from(document.querySelectorAll('textarea, [contenteditable="true"], [role="textbox"], input[type="text"]'));
-                            var visibleInputs = inputs.filter(function(el) {
-                                var r = el.getBoundingClientRect();
-                                return r.width > 20 && r.height > 10 && r.top > window.innerHeight * 0.25;
-                            });
-                            if (visibleInputs.length === 0) return null;
-                            visibleInputs.sort(function(a, b) {
-                                return b.getBoundingClientRect().bottom - a.getBoundingClientRect().bottom;
-                            });
-                            var input = visibleInputs[0];
-                            var curr = input;
-                            var best = input;
-                            while (curr && curr !== document.body && curr !== document.documentElement) {
-                                var r = curr.getBoundingClientRect();
-                                if (r.width < window.innerWidth * 0.98) {
-                                    if (curr.querySelector('button') || curr.tagName === 'FORM' || curr.getAttribute('role') === 'region') {
-                                        best = curr;
-                                    } else if (r.width > best.getBoundingClientRect().width * 1.05) {
-                                        best = curr;
-                                    }
-                                }
-                                curr = curr.parentElement;
-                            }
-                            return best;
-                        }
-
-                        function reportSendBox() {
-                            try {
-                                var box = findSendBox();
-                                if (box && window.AndroidNotificationBridge && window.AndroidNotificationBridge.onSendBoxBoundsUpdated) {
-                                    var r = box.getBoundingClientRect();
-                                    window.AndroidNotificationBridge.onSendBoxBoundsUpdated(
-                                        r.left, r.top, r.right, r.bottom, r.width, r.height, window.innerWidth, window.innerHeight
-                                    );
-                                }
-                            } catch(e) {}
-                        }
-
-                        if (!window.SendBoxObserverInstalled) {
-                            window.SendBoxObserverInstalled = true;
-                            window.addEventListener('resize', reportSendBox);
-                            window.addEventListener('scroll', reportSendBox, true);
-                            window.addEventListener('input', reportSendBox, true);
-                            setInterval(reportSendBox, 1000);
-                        }
-                        reportSendBox();
-                    })();
-                """.trimIndent()
-                view?.evaluateJavascript(sendBoxObserverScript, null)
             }
 
             override fun onReceivedError(
@@ -477,54 +381,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateFabPosition() {
-        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val density = resources.displayMetrics.density
         val params = binding.fabSettings.layoutParams as FrameLayout.LayoutParams
         params.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
-
-        if (isLandscape) {
-            val webViewWidth = binding.webView.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-            val webViewHeight = binding.webView.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
-
-            val fabDiameterPx = 40f * density
-            val shadowPaddingPx = 4f * density
-
-            val sendBoxRightPx: Float = if (lastSendBoxRightRatio != null && lastSendBoxRightRatio!! in 0.5f..0.98f) {
-                lastSendBoxRightRatio!! * webViewWidth
-            } else {
-                val estimatedBoxWidthPx = minOf(webViewWidth.toFloat(), 768f * density)
-                (webViewWidth + estimatedBoxWidthPx) / 2f
-            }
-
-            val rightBlankWidthPx = maxOf(0f, webViewWidth - sendBoxRightPx)
-            val equalDistancePx = maxOf(0f, (rightBlankWidthPx - fabDiameterPx) / 2f)
-            val computedEndMargin = (equalDistancePx - systemBarsRight - shadowPaddingPx).toInt()
-            params.marginEnd = maxOf((8 * density).toInt(), computedEndMargin)
-
-            val sendBoxCenterFromBottomPx: Float = if (lastSendBoxCenterYFromBottomRatio != null) {
-                lastSendBoxCenterYFromBottomRatio!! * webViewHeight
-            } else {
-                50f * density
-            }
-
-            val fabCircleBottomFromBottomPx = sendBoxCenterFromBottomPx - (fabDiameterPx / 2f)
-            val computedBottomMargin = (fabCircleBottomFromBottomPx - shadowPaddingPx).toInt()
-            params.bottomMargin = maxOf((4 * density).toInt(), computedBottomMargin)
-        } else {
-            params.marginEnd = (12 * density).toInt()
-            params.bottomMargin = (94 * density).toInt()
-        }
+        params.marginEnd = resources.getDimensionPixelSize(R.dimen.fab_margin_end)
+        params.bottomMargin = resources.getDimensionPixelSize(R.dimen.fab_margin_bottom)
         binding.fabSettings.layoutParams = params
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        val insets = ViewCompat.getRootWindowInsets(binding.rootContainer)
-        if (insets != null) {
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            systemBarsBottom = systemBars.bottom
-            systemBarsRight = systemBars.right
-        }
         updateFabPosition()
     }
 
