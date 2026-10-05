@@ -24,4 +24,35 @@
     <string name="logout_success">Session cleared. Returning to login page…</string>
     <string name="channel_name">Antigravity Remote</string>
     <string name="channel_desc">Agent task executions, approvals, and status alerts</string>
+
+    <!-- WebView Info -->
+    <string name="webview_info_menu_title">WebView Information</string>
+    <string name="webview_info_menu_desc">Inspect local WebView provider, version &amp; features</string>
+    <string name="webview_info_dialog_title">WebView Information</string>
+    <string name="webview_info_core_section">Core Properties</string>
+    <string name="webview_info_provider">Provider</string>
+    <string name="webview_info_package">Package Name</string>
+    <string name="webview_info_version">Version</string>
+    <string name="webview_info_version_code">Version Code</string>
+    <string name="webview_info_kernel">Chromium Kernel</string>
+    <string name="webview_info_features_section">Features &amp; Status</string>
+    <string name="webview_info_multiprocess">Multi-Process Mode</string>
+    <string name="webview_info_safebrowsing">Google Safe Browsing</string>
+    <string name="webview_info_webmessage">WebMessage Listener</string>
+    <string name="webview_info_startscript">Document Start Script</string>
+    <string name="webview_info_darkening">Algorithmic Darkening</string>
+    <string name="webview_info_debugging">WebContents Debugging</string>
+    <string name="webview_info_system_section">Environment</string>
+    <string name="webview_info_os">Android OS</string>
+    <string name="webview_info_device">Device</string>
+    <string name="webview_info_abi">Architecture (ABI)</string>
+    <string name="webview_info_ua_section">User Agent</string>
+    <string name="webview_info_copy">Copy Details</string>
+    <string name="webview_info_close">Close</string>
+    <string name="webview_info_copied_toast">WebView details copied to clipboard</string>
+    <string name="webview_status_enabled">Enabled</string>
+    <string name="webview_status_disabled">Disabled</string>
+    <string name="webview_status_supported">Supported</string>
+    <string name="webview_status_unsupported">Unsupported</string>
+    <string name="webview_status_unknown">Unknown</string>
 </resources>

@@ -24,4 +24,35 @@
     <string name="logout_success">已清除工作階段，正在返回登入頁面…</string>
     <string name="channel_name">Antigravity Remote</string>
     <string name="channel_desc">Agent 任務執行、命令審批與遠端狀態通知</string>
+
+    <!-- WebView Info -->
+    <string name="webview_info_menu_title">WebView 資訊</string>
+    <string name="webview_info_menu_desc">查看本機 WebView 提供者、核心版本與功能</string>
+    <string name="webview_info_dialog_title">WebView 系統資訊</string>
+    <string name="webview_info_core_section">核心屬性</string>
+    <string name="webview_info_provider">提供者</string>
+    <string name="webview_info_package">套件名稱</string>
+    <string name="webview_info_version">應用程式版本</string>
+    <string name="webview_info_version_code">組建代碼</string>
+    <string name="webview_info_kernel">Chromium 核心</string>
+    <string name="webview_info_features_section">功能與狀態</string>
+    <string name="webview_info_multiprocess">多程序沙盒模式</string>
+    <string name="webview_info_safebrowsing">Google 安全瀏覽</string>
+    <string name="webview_info_webmessage">WebMessage 監聽器</string>
+    <string name="webview_info_startscript">頁面啟動指令碼注入</string>
+    <string name="webview_info_darkening">演算法深色主題支援</string>
+    <string name="webview_info_debugging">網頁內容遠端除錯</string>
+    <string name="webview_info_system_section">執行環境</string>
+    <string name="webview_info_os">系統版本</string>
+    <string name="webview_info_device">裝置型號</string>
+    <string name="webview_info_abi">CPU 架構</string>
+    <string name="webview_info_ua_section">使用者代理 (User Agent)</string>
+    <string name="webview_info_copy">複製全部資訊</string>
+    <string name="webview_info_close">關閉</string>
+    <string name="webview_info_copied_toast">已將 WebView 詳細資訊複製至剪貼簿！</string>
+    <string name="webview_status_enabled">已啟用</string>
+    <string name="webview_status_disabled">未啟用</string>
+    <string name="webview_status_supported">支援</string>
+    <string name="webview_status_unsupported">不支援</string>
+    <string name="webview_status_unknown">未知</string>
 </resources>

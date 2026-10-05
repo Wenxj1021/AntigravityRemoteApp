@@ -6,11 +6,14 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -40,8 +43,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.antigravity.remote.databinding.ActivityMainBinding
 import com.antigravity.remote.databinding.BottomSheetMenuBinding
+import com.antigravity.remote.databinding.BottomSheetWebviewInfoBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.color.DynamicColors
@@ -573,12 +579,228 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.test_notification_sent_toast, Toast.LENGTH_SHORT).show()
         }
 
+        sheetBinding.itemWebViewInfo.setOnClickListener {
+            dialog.dismiss()
+            showWebViewInfoBottomSheet()
+        }
+
         sheetBinding.itemLogout.setOnClickListener {
             dialog.dismiss()
             performLogout()
         }
 
         dialog.show()
+    }
+
+    private data class WebViewDetails(
+        val providerName: String,
+        val packageName: String,
+        val versionName: String,
+        val versionCode: String,
+        val chromeKernelVersion: String,
+        val isMultiProcess: Boolean?,
+        val isSafeBrowsingSupported: Boolean,
+        val isWebMessageListenerSupported: Boolean,
+        val isDocumentStartScriptSupported: Boolean,
+        val isDarkeningSupported: Boolean,
+        val isDebuggingEnabled: Boolean,
+        val osVersion: String,
+        val deviceModel: String,
+        val cpuAbi: String,
+        val userAgent: String,
+        val icon: Drawable?
+    )
+
+    private fun getWebViewDetails(): WebViewDetails {
+        val packageInfo = try {
+            WebViewCompat.getCurrentWebViewPackage(this)
+                ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    WebView.getCurrentWebViewPackage()
+                } else null
+        } catch (e: Exception) {
+            null
+        }
+
+        val pm = packageManager
+        val providerName = packageInfo?.applicationInfo?.loadLabel(pm)?.toString()
+            ?: packageInfo?.packageName
+            ?: getString(R.string.webview_status_unknown)
+
+        val icon = try {
+            packageInfo?.packageName?.let { pm.getApplicationIcon(it) }
+        } catch (e: Exception) {
+            null
+        }
+
+        val pkgName = packageInfo?.packageName ?: getString(R.string.webview_status_unknown)
+        val verName = packageInfo?.versionName ?: getString(R.string.webview_status_unknown)
+        val verCode = if (packageInfo != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode.toString()
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toString()
+            }
+        } else {
+            getString(R.string.webview_status_unknown)
+        }
+
+        val ua = try {
+            binding.webView.settings.userAgentString
+        } catch (e: Exception) {
+            try {
+                WebSettings.getDefaultUserAgent(this)
+            } catch (e2: Exception) {
+                "N/A"
+            }
+        }
+
+        val chromeKernel = Regex("Chrome/([0-9.]+)").find(ua)?.groupValues?.getOrNull(1) ?: "N/A"
+
+        val isMultiProcess = try {
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROCESS)) {
+                WebViewCompat.isMultiProcessEnabled()
+            } else {
+                null
+            }
+        } catch (e: Throwable) {
+            null
+        }
+
+        val isSafeBrowsing = try {
+            WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)
+        } catch (e: Throwable) {
+            false
+        }
+
+        val isWebMessage = try {
+            WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
+        } catch (e: Throwable) {
+            false
+        }
+
+        val isDocStartScript = try {
+            WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
+        } catch (e: Throwable) {
+            false
+        }
+
+        val isDarkening = try {
+            WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)
+        } catch (e: Throwable) {
+            false
+        }
+
+        val osVer = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+        val device = "${Build.MANUFACTURER} ${Build.MODEL}"
+        val abis = Build.SUPPORTED_ABIS?.joinToString(", ") ?: "N/A"
+
+        return WebViewDetails(
+            providerName = providerName,
+            packageName = pkgName,
+            versionName = verName,
+            versionCode = verCode,
+            chromeKernelVersion = chromeKernel,
+            isMultiProcess = isMultiProcess,
+            isSafeBrowsingSupported = isSafeBrowsing,
+            isWebMessageListenerSupported = isWebMessage,
+            isDocumentStartScriptSupported = isDocStartScript,
+            isDarkeningSupported = isDarkening,
+            isDebuggingEnabled = true,
+            osVersion = osVer,
+            deviceModel = device,
+            cpuAbi = abis,
+            userAgent = ua,
+            icon = icon
+        )
+    }
+
+    private fun showWebViewInfoBottomSheet() {
+        val details = getWebViewDetails()
+        val dialog = BottomSheetDialog(this)
+        val infoBinding = BottomSheetWebviewInfoBinding.inflate(layoutInflater)
+        dialog.setContentView(infoBinding.root)
+
+        dialog.behavior.apply {
+            state = BottomSheetBehavior.STATE_EXPANDED
+            skipCollapsed = true
+            isFitToContents = true
+        }
+        dialog.setOnShowListener {
+            dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+
+        if (details.icon != null) {
+            infoBinding.imgProviderIcon.setImageDrawable(details.icon)
+            infoBinding.imgProviderIcon.imageTintList = null
+        }
+        infoBinding.tvProviderName.text = details.providerName
+        infoBinding.tvPackageName.text = details.packageName
+        infoBinding.tvVersionName.text = details.versionName
+        infoBinding.tvVersionCode.text = details.versionCode
+        infoBinding.tvChromeVersion.text = details.chromeKernelVersion
+
+        fun formatFeature(supported: Boolean): String =
+            getString(if (supported) R.string.webview_status_supported else R.string.webview_status_unsupported)
+
+        fun formatStatus(enabled: Boolean?): String = when (enabled) {
+            true -> getString(R.string.webview_status_enabled)
+            false -> getString(R.string.webview_status_disabled)
+            null -> getString(R.string.webview_status_unknown)
+        }
+
+        infoBinding.tvMultiProcess.text = formatStatus(details.isMultiProcess)
+        infoBinding.tvSafeBrowsing.text = formatFeature(details.isSafeBrowsingSupported)
+        infoBinding.tvWebMessage.text = formatFeature(details.isWebMessageListenerSupported)
+        infoBinding.tvStartScript.text = formatFeature(details.isDocumentStartScriptSupported)
+        infoBinding.tvDebugging.text = getString(R.string.webview_status_enabled)
+
+        infoBinding.tvOsVersion.text = details.osVersion
+        infoBinding.tvDeviceModel.text = details.deviceModel
+        infoBinding.tvCpuAbi.text = details.cpuAbi
+        infoBinding.tvUserAgent.text = details.userAgent
+
+        infoBinding.btnCopyInfo.setOnClickListener {
+            copyWebViewInfoToClipboard(details)
+        }
+
+        infoBinding.btnClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun copyWebViewInfoToClipboard(details: WebViewDetails) {
+        val text = buildString {
+            appendLine("=== WebView Information ===")
+            appendLine("Provider: ${details.providerName}")
+            appendLine("Package: ${details.packageName}")
+            appendLine("Version: ${details.versionName}")
+            appendLine("Version Code: ${details.versionCode}")
+            appendLine("Chromium Kernel: ${details.chromeKernelVersion}")
+            appendLine()
+            appendLine("=== Features & Status ===")
+            appendLine("Multi-Process: ${if (details.isMultiProcess == true) "Enabled" else if (details.isMultiProcess == false) "Disabled" else "Unknown"}")
+            appendLine("Safe Browsing: ${if (details.isSafeBrowsingSupported) "Supported" else "Unsupported"}")
+            appendLine("WebMessage Listener: ${if (details.isWebMessageListenerSupported) "Supported" else "Unsupported"}")
+            appendLine("Document Start Script: ${if (details.isDocumentStartScriptSupported) "Supported" else "Unsupported"}")
+            appendLine("Algorithmic Darkening: ${if (details.isDarkeningSupported) "Supported" else "Unsupported"}")
+            appendLine("WebContents Debugging: Enabled")
+            appendLine()
+            appendLine("=== Environment ===")
+            appendLine("Device: ${details.deviceModel}")
+            appendLine("OS: ${details.osVersion}")
+            appendLine("ABI: ${details.cpuAbi}")
+            appendLine()
+            appendLine("=== User Agent ===")
+            appendLine(details.userAgent)
+        }
+
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clip = ClipData.newPlainText("WebView Info", text)
+        clipboard.setPrimaryClip(clip)
+        Toast.makeText(this, R.string.webview_info_copied_toast, Toast.LENGTH_SHORT).show()
     }
 
     private fun performLogout() {
