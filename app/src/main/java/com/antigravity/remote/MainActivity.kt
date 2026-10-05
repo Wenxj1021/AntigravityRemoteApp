@@ -8,7 +8,6 @@ import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -17,6 +16,7 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -40,6 +40,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -65,7 +66,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var notificationPermissionLauncher: ActivityResultLauncher<String>
 
     private val prefs by lazy {
-        getSharedPreferences("antigravity_remote_prefs", Context.MODE_PRIVATE)
+        getSharedPreferences("antigravity_remote_prefs", MODE_PRIVATE)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -145,28 +146,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                getString(R.string.channel_name),
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = getString(R.string.channel_desc)
-                enableLights(true)
-                enableVibration(true)
-            }
-            val manager = getSystemService(NotificationManager::class.java)
-            manager?.createNotificationChannel(channel)
+        val channel = NotificationChannel(
+            NOTIFICATION_CHANNEL_ID,
+            getString(R.string.channel_name),
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = getString(R.string.channel_desc)
+            enableLights(true)
+            enableVibration(true)
         }
+        val manager = getSystemService(NotificationManager::class.java)
+        manager?.createNotificationChannel(channel)
     }
 
     private fun requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -195,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+            ) == PackageManager.PERMISSION_GRANTED
         ) {
             NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
         }
@@ -203,6 +200,7 @@ class MainActivity : AppCompatActivity() {
 
     inner class NotificationBridge {
         @JavascriptInterface
+        @Suppress("unused", "UNUSED_PARAMETER")
         fun postNotification(title: String?, body: String?, tag: String?) {
             val safeTitle = if (title.isNullOrBlank()) "Antigravity Remote" else title
             val safeBody = body ?: ""
@@ -212,6 +210,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         @JavascriptInterface
+        @Suppress("unused")
         fun requestPermission() {
             runOnUiThread {
                 requestNotificationPermission()
@@ -255,7 +254,7 @@ class MainActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.GONE
 
                 if (!url.isNullOrBlank() && !url.startsWith("data:") && !url.startsWith("about:")) {
-                    prefs.edit().putString("last_visited_url", url).apply()
+                    prefs.edit { putString("last_visited_url", url) }
                 }
 
                 // 注入 HTML5 Notification API Polyfill，使网页通知直接桥接为安卓原生系统通知
@@ -311,7 +310,7 @@ class MainActivity : AppCompatActivity() {
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, uri)
                             startActivity(intent)
-                        } catch (e: ActivityNotFoundException) {
+                        } catch (_: ActivityNotFoundException) {
                             Toast.makeText(
                                 this@MainActivity,
                                 "No app found to handle link: $uri",
@@ -354,7 +353,7 @@ class MainActivity : AppCompatActivity() {
 
                 try {
                     fileChooserLauncher.launch(intent)
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     fileUploadCallback?.onReceiveValue(null)
                     fileUploadCallback = null
                     Toast.makeText(this@MainActivity, R.string.cannot_open_file_picker, Toast.LENGTH_SHORT).show()
@@ -382,7 +381,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateFabPosition() {
         val params = binding.fabSettings.layoutParams as FrameLayout.LayoutParams
-        params.gravity = android.view.Gravity.BOTTOM or android.view.Gravity.END
+        params.gravity = Gravity.BOTTOM or Gravity.END
         params.marginEnd = resources.getDimensionPixelSize(R.dimen.fab_margin_end)
         params.bottomMargin = resources.getDimensionPixelSize(R.dimen.fab_margin_bottom)
         binding.fabSettings.layoutParams = params
@@ -479,10 +478,7 @@ class MainActivity : AppCompatActivity() {
     private fun getWebViewDetails(): WebViewDetails {
         val packageInfo = try {
             WebViewCompat.getCurrentWebViewPackage(this)
-                ?: if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    WebView.getCurrentWebViewPackage()
-                } else null
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
 
@@ -493,29 +489,20 @@ class MainActivity : AppCompatActivity() {
 
         val icon = try {
             packageInfo?.packageName?.let { pm.getApplicationIcon(it) }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
 
         val pkgName = packageInfo?.packageName ?: getString(R.string.webview_status_unknown)
         val verName = packageInfo?.versionName ?: getString(R.string.webview_status_unknown)
-        val verCode = if (packageInfo != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode.toString()
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.versionCode.toString()
-            }
-        } else {
-            getString(R.string.webview_status_unknown)
-        }
+        val verCode = packageInfo?.longVersionCode?.toString() ?: getString(R.string.webview_status_unknown)
 
         val ua = try {
             binding.webView.settings.userAgentString
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             try {
                 WebSettings.getDefaultUserAgent(this)
-            } catch (e2: Exception) {
+            } catch (_: Exception) {
                 "N/A"
             }
         }
@@ -528,37 +515,37 @@ class MainActivity : AppCompatActivity() {
             } else {
                 null
             }
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             null
         }
 
         val isSafeBrowsing = try {
             WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             false
         }
 
         val isWebMessage = try {
             WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             false
         }
 
         val isDocStartScript = try {
             WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             false
         }
 
         val isDarkening = try {
             WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)
-        } catch (e: Throwable) {
+        } catch (_: Throwable) {
             false
         }
 
         val osVer = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
         val device = "${Build.MANUFACTURER} ${Build.MODEL}"
-        val abis = Build.SUPPORTED_ABIS?.joinToString(", ") ?: "N/A"
+        val supportedAbis = Build.SUPPORTED_ABIS?.joinToString(", ") ?: "N/A"
 
         return WebViewDetails(
             providerName = providerName,
@@ -574,7 +561,7 @@ class MainActivity : AppCompatActivity() {
             isDebuggingEnabled = true,
             osVersion = osVer,
             deviceModel = device,
-            cpuAbi = abis,
+            cpuAbi = supportedAbis,
             userAgent = ua,
             icon = icon
         )
@@ -636,6 +623,7 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
+    @Suppress("UsePropertyAccessSyntax")
     private fun copyWebViewInfoToClipboard(details: WebViewDetails) {
         val text = buildString {
             appendLine("=== WebView Information ===")
@@ -662,7 +650,7 @@ class MainActivity : AppCompatActivity() {
             appendLine(details.userAgent)
         }
 
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText("WebView Info", text)
         clipboard.setPrimaryClip(clip)
         Toast.makeText(this, R.string.webview_info_copied_toast, Toast.LENGTH_SHORT).show()
@@ -682,7 +670,7 @@ class MainActivity : AppCompatActivity() {
                 binding.webView.clearCache(true)
                 binding.webView.clearHistory()
                 binding.webView.clearFormData()
-                prefs.edit().clear().apply()
+                prefs.edit { clear() }
                 binding.errorContainer.visibility = View.GONE
                 binding.webView.loadUrl(getString(R.string.default_url))
                 Toast.makeText(this, R.string.logout_success, Toast.LENGTH_SHORT).show()

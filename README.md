@@ -37,6 +37,42 @@
 
 ---
 
+## 📂 项目结构
+
+```text
+AntigravityRemoteApp/
+├── app/                                    # 主应用模块
+│   ├── src/main/
+│   │   ├── AndroidManifest.xml             # 应用清单（网络、通知权限、全屏沉浸配置）
+│   │   ├── java/com/antigravity/remote/
+│   │   │   └── MainActivity.kt             # 核心逻辑（WebView 配置、JS 通知桥接、M3 底栏菜单、系统通知、WebView 诊断）
+│   │   └── res/
+│   │       ├── drawable/                   # 矢量图标与背景 Drawable（设置、通知、复制、注销等）
+│   │       ├── layout/                     # 界面布局
+│   │       │   ├── activity_main.xml       # 主界面（全屏 WebView、加载进度条、网络重试容器、固定坐标 FAB）
+│   │       │   ├── bottom_sheet_menu.xml   # Material 3 模态底栏设置菜单
+│   │       │   └── bottom_sheet_webview_info.xml # 本机 WebView 详细诊断信息底栏
+│   │       ├── mipmap-*/                   # 桌面图标（自适应 Adaptive Icon 与 Android 13+ Monochrome 单色图标）
+│   │       ├── values/                     # 基础资源（M3 主题、色彩、默认尺寸 dimens.xml、英文字符串）
+│   │       ├── values-land/                # 横屏资源（固定悬浮按钮横屏坐标 dimens.xml）
+│   │       ├── values-night/               # 深色主题色彩（#131314 深邃灰黑背景）
+│   │       ├── values-zh/                  # 简体中文多语言资源
+│   │       ├── values-zh-rCN/              # 简体中文 (大陆) 多语言资源
+│   │       ├── values-zh-rHK/              # 繁体中文 (香港) 多语言资源
+│   │       └── values-zh-rTW/              # 繁体中文 (台湾) 多语言资源
+│   ├── build.gradle.kts                    # 模块级构建脚本（minSdk 36, ViewBinding, AndroidX/M3 依赖）
+│   └── proguard-rules.pro                  # 代码混淆与优化规则
+├── gradle/
+│   ├── libs.versions.toml                  # 统一依赖版本管理（Version Catalog）
+│   └── wrapper/                            # Gradle Wrapper 脚本与运行时
+├── build.gradle.kts                        # 根项目构建脚本
+├── gradle.properties                       # Gradle 守护进程与 JVM 运行参数
+├── settings.gradle.kts                     # 项目模块编排与依赖仓库源
+└── README.md                               # 项目设计与使用说明
+```
+
+---
+
 ## 📄 规范与依赖
 
 - **Min SDK**: 36 (Android 16)
@@ -44,3 +80,4 @@
 - **Gradle**: 9.8.0
 - **AGP**: 9.4.1 (Built-in Kotlin)
 - **JDK**: 17+
+
