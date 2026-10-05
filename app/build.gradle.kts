@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace = "com.antigravity.remote"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.antigravity.remote"
