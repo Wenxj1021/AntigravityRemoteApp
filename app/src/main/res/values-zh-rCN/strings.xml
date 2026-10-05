@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Antigravity Remote</string>
+    <string name="default_url">https://antigravity.google.com/</string>
+    <string name="error_loading">无法加载页面</string>
+    <string name="error_check_network">请检查网络连接或确认 Google Antigravity 服务是否正常运行。</string>
+    <string name="retry">重试</string>
+    <string name="cancel">取消</string>
+    <string name="menu_title">应用菜单</string>
+    <string name="refresh_page">刷新页面</string>
+    <string name="refresh_page_title">刷新控制台</string>
+    <string name="refresh_page_desc">重新加载页面与任务状态</string>
+    <string name="test_notification">发送测试通知</string>
+    <string name="test_notification_title">Antigravity Remote</string>
+    <string name="test_notification_content">通知系统就绪！Agent 任务完成与命令审批提醒将实时推送至此。</string>
+    <string name="test_notification_menu_title">测试系统通知</string>
+    <string name="test_notification_menu_desc">检验系统通知横幅与振动提醒</string>
+    <string name="test_notification_sent_toast">已发送测试通知，请查看手机通知栏！</string>
+    <string name="notification_permission_granted_toast">通知权限已开启，将接收 Agent 任务提醒</string>
+    <string name="cannot_open_file_picker">无法打开文件选择器</string>
+    <string name="logout">退出登录</string>
+    <string name="logout_desc">清除本地 Cookies 与登录会话，并返回登录页</string>
+    <string name="logout_confirm_title">退出登录</string>
+    <string name="logout_confirm_message">确定要退出当前账号吗？此操作将清除本地登录会话、缓存与 Cookie，并返回登录页面。</string>
+    <string name="logout_success">已清除会话，正在返回登录页面…</string>
+    <string name="channel_name">Antigravity Remote</string>
+    <string name="channel_desc">Agent 任务执行、命令审批与远程状态通知</string>
+</resources>

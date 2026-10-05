@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Antigravity Remote</string>
+    <string name="default_url">https://antigravity.google.com/</string>
+    <string name="error_loading">Unable to load page</string>
+    <string name="error_check_network">Please check your network connection or verify that Google Antigravity is accessible.</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="menu_title">Menu</string>
+    <string name="refresh_page">Refresh</string>
+    <string name="refresh_page_title">Refresh Console</string>
+    <string name="refresh_page_desc">Reload page and task states</string>
+    <string name="test_notification">Test Notification</string>
+    <string name="test_notification_title">Antigravity Remote</string>
+    <string name="test_notification_content">Notification system ready! Agent task updates and approval requests will be delivered here.</string>
+    <string name="test_notification_menu_title">Test System Notification</string>
+    <string name="test_notification_menu_desc">Verify notification banners and vibration</string>
+    <string name="test_notification_sent_toast">Test notification sent! Check your notification shade.</string>
+    <string name="notification_permission_granted_toast">Notification permission granted. You will receive Agent task alerts.</string>
+    <string name="cannot_open_file_picker">Cannot open file picker</string>
+    <string name="logout">Sign Out</string>
+    <string name="logout_desc">Clear local cookies and session, return to login page</string>
+    <string name="logout_confirm_title">Sign Out</string>
+    <string name="logout_confirm_message">Are you sure you want to sign out? This will clear all local session cookies and cache, returning you to the login page.</string>
+    <string name="logout_success">Session cleared. Returning to login page…</string>
+    <string name="channel_name">Antigravity Remote</string>
+    <string name="channel_desc">Agent task executions, approvals, and status alerts</string>
+</resources>

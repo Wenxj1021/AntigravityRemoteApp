@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Antigravity Remote</string>
+    <string name="default_url">https://antigravity.google.com/</string>
+    <string name="error_loading">無法載入頁面</string>
+    <string name="error_check_network">請檢查網絡連線或確認 Google Antigravity 服務是否正常運作。</string>
+    <string name="retry">重試</string>
+    <string name="cancel">取消</string>
+    <string name="menu_title">應用選單</string>
+    <string name="refresh_page">重新整理頁面</string>
+    <string name="refresh_page_title">重新整理主控台</string>
+    <string name="refresh_page_desc">重新載入頁面與任務狀態</string>
+    <string name="test_notification">傳送測試通知</string>
+    <string name="test_notification_title">Antigravity Remote</string>
+    <string name="test_notification_content">通知系統就緒！Agent 任務完成與命令審批提醒將即時推送至此。</string>
+    <string name="test_notification_menu_title">測試系統通知</string>
+    <string name="test_notification_menu_desc">檢驗系統通知橫幅與震動提醒</string>
+    <string name="test_notification_sent_toast">已傳送測試通知，請查看手機通知欄！</string>
+    <string name="notification_permission_granted_toast">通知權限已開啟，將接收 Agent 任務提醒</string>
+    <string name="cannot_open_file_picker">無法開啟檔案選擇器</string>
+    <string name="logout">登出帳號</string>
+    <string name="logout_desc">清除本機 Cookies 與登入工作階段，並返回登入頁</string>
+    <string name="logout_confirm_title">登出帳號</string>
+    <string name="logout_confirm_message">確定要登出目前帳號嗎？此操作將清除本機登入工作階段、快取與 Cookie，並返回登入頁面。</string>
+    <string name="logout_success">已清除工作階段，正在返回登入頁面…</string>
+    <string name="channel_name">Antigravity Remote</string>
+    <string name="channel_desc">Agent 任務執行、命令審批與遠端狀態通知</string>
+</resources>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#FF131314</color>
+
+    <!-- Material 3 Dark Tokens (Google Dark Foundation) -->
+    <color name="md_theme_dark_primary">#A8C7FA</color>
+    <color name="md_theme_dark_onPrimary">#0842A0</color>
+    <color name="md_theme_dark_primaryContainer">#004A77</color>
+    <color name="md_theme_dark_onPrimaryContainer">#D3E3FD</color>
+    <color name="md_theme_dark_secondary">#7FCFFF</color>
+    <color name="md_theme_dark_onSecondary">#00344F</color>
+    <color name="md_theme_dark_secondaryContainer">#004B73</color>
+    <color name="md_theme_dark_onSecondaryContainer">#C2E7FF</color>
+    <color name="md_theme_dark_tertiary">#DBBDE2</color>
+    <color name="md_theme_dark_onTertiary">#3D2846</color>
+    <color name="md_theme_dark_tertiaryContainer">#553F5D</color>
+    <color name="md_theme_dark_onTertiaryContainer">#F7DEFF</color>
+    <color name="md_theme_dark_error">#FFB4AB</color>
+    <color name="md_theme_dark_onError">#690005</color>
+    <color name="md_theme_dark_errorContainer">#93000A</color>
+    <color name="md_theme_dark_onErrorContainer">#FFDAD6</color>
+    <color name="md_theme_dark_background">#121316</color>
+    <color name="md_theme_dark_onBackground">#E3E3E3</color>
+    <color name="md_theme_dark_surface">#131314</color>
+    <color name="md_theme_dark_onSurface">#E3E3E3</color>
+    <color name="md_theme_dark_surfaceVariant">#44474E</color>
+    <color name="md_theme_dark_onSurfaceVariant">#C4C7C5</color>
+    <color name="md_theme_dark_surfaceContainerLowest">#0E0E0F</color>
+    <color name="md_theme_dark_surfaceContainerLow">#191A1B</color>
+    <color name="md_theme_dark_surfaceContainer">#1E1F20</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#282A2C</color>
+    <color name="md_theme_dark_surfaceContainerHighest">#333537</color>
+    <color name="md_theme_dark_outline">#8E9192</color>
+    <color name="md_theme_dark_outlineVariant">#444746</color>
+</resources>
