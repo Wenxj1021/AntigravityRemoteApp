@@ -76,8 +76,9 @@ AntigravityRemoteApp/
 ## 📄 规范与依赖
 
 - **Min SDK**: 36 (Android 16)
-- **Target / Compile SDK**: 36
+- **Target SDK**: 36
+- **Compile SDK**: 37
 - **Gradle**: 9.8.0
 - **AGP**: 9.4.1 (Built-in Kotlin)
-- **JDK**: 17+
+- **JDK**: 17+ (推荐 JDK 21)
 
