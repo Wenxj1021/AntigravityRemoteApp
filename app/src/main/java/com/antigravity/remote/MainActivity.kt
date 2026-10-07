@@ -8,10 +8,12 @@ import android.app.PendingIntent
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
@@ -88,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         initLaunchers()
         createNotificationChannel()
         requestNotificationPermission()
+        updateLauncherIconTheme()
         setupWebView()
         setupListeners()
         updateFabPosition()
@@ -167,7 +170,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var lastNotificationTime: Long = 0L
+    private var lastNotificationContent: String = ""
+
     fun sendNotification(title: String, body: String) {
+        val now = System.currentTimeMillis()
+        val contentKey = "$title::$body"
+        if (now - lastNotificationTime < 1500L && lastNotificationContent == contentKey) {
+            return
+        }
+        lastNotificationTime = now
+        lastNotificationContent = contentKey
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -178,8 +192,14 @@ class MainActivity : AppCompatActivity() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        val largeIcon = try {
+            BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_round)
+        } catch (_: Exception) {
+            null
+        }
+
+        val notificationBuilder = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notifications)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -187,14 +207,20 @@ class MainActivity : AppCompatActivity() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .build()
+
+        if (largeIcon != null) {
+            notificationBuilder.setLargeIcon(largeIcon)
+        }
+
+        val notification = notificationBuilder.build()
 
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         ) {
-            NotificationManagerCompat.from(this).notify(System.currentTimeMillis().toInt(), notification)
+            val notificationId = (System.currentTimeMillis() % 100000).toInt()
+            NotificationManagerCompat.from(this).notify(notificationId, notification)
         }
     }
 
@@ -216,6 +242,151 @@ class MainActivity : AppCompatActivity() {
                 requestNotificationPermission()
             }
         }
+    }
+
+    private fun getNotificationPolyfillScript(): String {
+        return """
+            (function() {
+                if (window.__AG_NOTIFICATION_BRIDGE_INSTALLED__) return;
+                window.__AG_NOTIFICATION_BRIDGE_INSTALLED__ = true;
+
+                function notifyNative(title, options) {
+                    options = options || {};
+                    var body = options.body || "";
+                    var tag = options.tag || "";
+                    try {
+                        if (window.AndroidNotificationBridge && window.AndroidNotificationBridge.postNotification) {
+                            window.AndroidNotificationBridge.postNotification(String(title || "Antigravity Remote"), String(body), String(tag));
+                        }
+                    } catch(e) {
+                        console.error("[AG Bridge] postNotification error:", e);
+                    }
+                }
+
+                function MockNotification(title, options) {
+                    options = options || {};
+                    this.title = String(title || "");
+                    this.body = String(options.body || "");
+                    this.tag = String(options.tag || "");
+                    this.icon = String(options.icon || "");
+                    this.data = options.data || null;
+                    this.timestamp = Date.now();
+                    this.onclick = null;
+                    this.onclose = null;
+                    this.onerror = null;
+                    this.onshow = null;
+
+                    notifyNative(this.title, options);
+
+                    var self = this;
+                    setTimeout(function() {
+                        try {
+                            var evt = new Event('show');
+                            if (typeof self.onshow === 'function') self.onshow(evt);
+                            self.dispatchEvent(evt);
+                        } catch(_) {}
+                    }, 50);
+                }
+
+                try {
+                    MockNotification.prototype = Object.create(EventTarget.prototype);
+                    MockNotification.prototype.constructor = MockNotification;
+                } catch(_) {
+                    MockNotification.prototype = {};
+                }
+
+                MockNotification.prototype.close = function() {
+                    try {
+                        var evt = new Event('close');
+                        if (typeof this.onclose === 'function') this.onclose(evt);
+                        this.dispatchEvent(evt);
+                    } catch(_) {}
+                };
+
+                MockNotification.prototype.addEventListener = MockNotification.prototype.addEventListener || function() {};
+                MockNotification.prototype.removeEventListener = MockNotification.prototype.removeEventListener || function() {};
+                MockNotification.prototype.dispatchEvent = MockNotification.prototype.dispatchEvent || function() { return true; };
+
+                try {
+                    Object.defineProperty(MockNotification, 'permission', {
+                        get: function() { return 'granted'; },
+                        enumerable: true,
+                        configurable: true
+                    });
+                } catch(_) {
+                    MockNotification.permission = 'granted';
+                }
+
+                MockNotification.maxActions = 2;
+                MockNotification.requestPermission = function(callback) {
+                    try {
+                        if (window.AndroidNotificationBridge && window.AndroidNotificationBridge.requestPermission) {
+                            window.AndroidNotificationBridge.requestPermission();
+                        }
+                    } catch(_) {}
+                    var p = Promise.resolve('granted');
+                    if (typeof callback === 'function') {
+                        try { callback('granted'); } catch(_) {}
+                    }
+                    return p;
+                };
+
+                try {
+                    Object.defineProperty(window, 'Notification', {
+                        value: MockNotification,
+                        writable: true,
+                        configurable: true
+                    });
+                } catch(_) {
+                    window.Notification = MockNotification;
+                }
+
+                // 2. 桥接 ServiceWorkerRegistration.prototype.showNotification (现代 Chrome/PWA 通道)
+                if (typeof ServiceWorkerRegistration !== 'undefined') {
+                    ServiceWorkerRegistration.prototype.showNotification = function(title, options) {
+                        notifyNative(title, options);
+                        return Promise.resolve();
+                    };
+                    ServiceWorkerRegistration.prototype.getNotifications = function() {
+                        return Promise.resolve([]);
+                    };
+                }
+
+                // 3. 拦截 navigator.permissions.query，确保网页探测通知权限时返回 granted
+                if (navigator.permissions && navigator.permissions.query) {
+                    var origQuery = navigator.permissions.query.bind(navigator.permissions);
+                    navigator.permissions.query = function(desc) {
+                        if (desc && (desc.name === 'notifications' || desc.name === 'push')) {
+                            var status = new EventTarget();
+                            Object.defineProperty(status, 'state', { get: function() { return 'granted'; } });
+                            status.name = desc.name;
+                            status.onchange = null;
+                            return Promise.resolve(status);
+                        }
+                        return origQuery(desc);
+                    };
+                }
+
+                // 4. 后台标签页标题变更检测保底机制（当 Agent 任务完成或需审批修改网页标题时）
+                var lastTitle = "";
+                function checkTitle() {
+                    var t = document.title || "";
+                    if (t && t !== lastTitle) {
+                        lastTitle = t;
+                        var m = t.match(/^[\(\[\u25CF\u2022\u2713\u2705\d\s\-\:]+([^\(\[\u25CF\u2022\u2713\u2705].*)$/);
+                        if (document.hidden && m && m[1]) {
+                            notifyNative("Antigravity Remote", m[1].trim());
+                        }
+                    }
+                }
+                try {
+                    var titleTarget = document.querySelector('title');
+                    if (titleTarget) {
+                        new MutationObserver(checkTitle).observe(titleTarget, { subtree: true, characterData: true, childList: true });
+                    }
+                } catch(_) {}
+            })();
+        """.trimIndent()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -242,11 +413,24 @@ class MainActivity : AppCompatActivity() {
         // 注入通知桥接 JavaScript 接口
         binding.webView.addJavascriptInterface(NotificationBridge(), "AndroidNotificationBridge")
 
+        // 优先使用 DocumentStartScript 在网页任何代码执行前注入 Polyfill
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            try {
+                WebViewCompat.addDocumentStartJavaScript(
+                    binding.webView,
+                    getNotificationPolyfillScript(),
+                    setOf("*")
+                )
+            } catch (_: Exception) {
+            }
+        }
+
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
                 binding.progressBar.visibility = View.VISIBLE
                 binding.errorContainer.visibility = View.GONE
+                view?.evaluateJavascript(getNotificationPolyfillScript(), null)
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -257,32 +441,8 @@ class MainActivity : AppCompatActivity() {
                     prefs.edit { putString("last_visited_url", url) }
                 }
 
-                // 注入 HTML5 Notification API Polyfill，使网页通知直接桥接为安卓原生系统通知
-                val notificationPolyfill = """
-                    (function() {
-                        if (!window.AndroidNotificationBridgeInjected) {
-                            window.AndroidNotificationBridgeInjected = true;
-                            window.Notification = function(title, options) {
-                                options = options || {};
-                                var body = options.body || "";
-                                var tag = options.tag || "";
-                                if (window.AndroidNotificationBridge) {
-                                    window.AndroidNotificationBridge.postNotification(title, body, tag);
-                                }
-                            };
-                            window.Notification.permission = "granted";
-                            window.Notification.requestPermission = function(callback) {
-                                if (window.AndroidNotificationBridge) {
-                                    window.AndroidNotificationBridge.requestPermission();
-                                }
-                                var p = Promise.resolve("granted");
-                                if (callback) callback("granted");
-                                return p;
-                            };
-                        }
-                    })();
-                """.trimIndent()
-                view?.evaluateJavascript(notificationPolyfill, null)
+                // 兜底注入 Polyfill，确保页面各阶段均就绪
+                view?.evaluateJavascript(getNotificationPolyfillScript(), null)
             }
 
             override fun onReceivedError(
@@ -390,6 +550,36 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         updateFabPosition()
+        updateLauncherIconTheme()
+    }
+
+    private fun updateLauncherIconTheme() {
+        val isNight = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val lightAlias = ComponentName(this, "com.antigravity.remote.MainActivityLight")
+        val darkAlias = ComponentName(this, "com.antigravity.remote.MainActivityDark")
+
+        val (targetEnable, targetDisable) = if (isNight) {
+            darkAlias to lightAlias
+        } else {
+            lightAlias to darkAlias
+        }
+
+        try {
+            val currentState = packageManager.getComponentEnabledSetting(targetEnable)
+            if (currentState != PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+                packageManager.setComponentEnabledSetting(
+                    targetEnable,
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP
+                )
+                packageManager.setComponentEnabledSetting(
+                    targetDisable,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP
+                )
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun setupBackNavigation() {
@@ -692,12 +882,13 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         binding.webView.onResume()
+        updateLauncherIconTheme()
     }
 
     override fun onPause() {
-        binding.webView.onPause()
-        CookieManager.getInstance().flush()
         super.onPause()
+        // 不暂停 WebView，允许后台常驻接收 WebSocket 与 Agent 任务通知
+        CookieManager.getInstance().flush()
     }
 
     override fun onStop() {

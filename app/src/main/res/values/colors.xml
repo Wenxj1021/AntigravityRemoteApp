@@ -7,6 +7,7 @@
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
     <color name="ic_launcher_background">#FFFFFFFF</color>
+    <color name="ic_launcher_background_dark">#FF131314</color>
 
     <!-- Material 3 Light Tokens (Google Blue Foundation) -->
     <color name="md_theme_light_primary">#0B57D0</color>
