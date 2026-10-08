@@ -3,25 +3,44 @@ package com.antigravity.remote
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import android.webkit.WebView
 
 /**
  * 后台保活 WebView
  *
  * 核心原理：
- * Android 系统在 Activity 进入后台（onStop）时，会通过 View 树向 WebView 发送
- * onWindowVisibilityChanged(View.GONE)。
- * Chromium 内核接收到 GONE 后会将页面状态转入 Hidden，触发定时器深度节流（最慢 1 分钟执行一次）、
- * 强制挂起 WebRTC 数据流及长轮询连接，导致挂后台时无法实时接收 Agent 响应及弹出操作提醒。
- *
- * 通过在此重写视图可见性通知，始终向底层 Chromium 内核上报 View.VISIBLE，
- * 阻止内核进入休眠降级逻辑，实现真正实时的后台消息接收。
+ * 1. 视窗可见性：重写 onWindowVisibilityChanged 与 onVisibilityChanged 始终上报 View.VISIBLE，
+ *    阻止 Chromium 内核进入休眠节流与冻结长连接。
+ * 2. 输入对焦与输入法绑定：显式开启 isFocusableInTouchMode 并声明 onCheckIsTextEditor = true，
+ *    确保用户点击对话框输入区域时，原生 View 树与 InputMethodManager 能够将焦点指派给本 WebView，
+ *    无缝呼起系统软键盘。
  */
 class PersistentWebView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : WebView(context, attrs, defStyleAttr) {
+
+    init {
+        isFocusable = true
+        isFocusableInTouchMode = true
+        isClickable = true
+    }
+
+    override fun onCheckIsTextEditor(): Boolean {
+        // 向系统 InputMethodManager 明确标识本组件支持文本输入交互
+        return true
+    }
+
+    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
+        val connection = super.onCreateInputConnection(outAttrs)
+        if (outAttrs.imeOptions == 0) {
+            outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        }
+        return connection
+    }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         // 关键：始终向底层 Chromium 汇报 View.VISIBLE

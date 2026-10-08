@@ -19,7 +19,9 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
@@ -267,6 +269,28 @@ class MainActivity : AppCompatActivity() {
                 requestNotificationPermission()
             }
         }
+
+        @JavascriptInterface
+        @Suppress("unused")
+        fun showKeyboard() {
+            AppLogger.d("NotificationBridge", "收到网页请求呼起软键盘 (showKeyboard)")
+            runOnUiThread {
+                binding.webView.requestFocus()
+                binding.webView.requestFocusFromTouch()
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.showSoftInput(binding.webView, InputMethodManager.SHOW_IMPLICIT)
+            }
+        }
+
+        @JavascriptInterface
+        @Suppress("unused")
+        fun hideKeyboard() {
+            AppLogger.d("NotificationBridge", "收到网页请求隐藏软键盘 (hideKeyboard)")
+            runOnUiThread {
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
+                imm?.hideSoftInputFromWindow(binding.webView.windowToken, 0)
+            }
+        }
     }
 
     private fun getNotificationPolyfillScript(): String {
@@ -415,11 +439,30 @@ class MainActivity : AppCompatActivity() {
                     }
                 };
 
-                // 5. 页面活跃与对焦状态伪装：确保即使置于后台，仍向页面汇报为活跃且可见状态
-                try {
-                    Document.prototype.hasFocus = function() { return true; };
-                    document.hasFocus = function() { return true; };
-                } catch(_) {}
+                // 5. 主动感知输入框与 contenteditable 点击/聚焦，唤起原生软键盘 (双重兜底保障)
+                function triggerNativeKeyboard(el) {
+                    if (!el) return;
+                    var isEditable = el.isContentEditable || 
+                                     el.tagName === 'INPUT' || 
+                                     el.tagName === 'TEXTAREA' || 
+                                     el.getAttribute('contenteditable') === 'true' ||
+                                     (el.closest && el.closest('[contenteditable="true"]'));
+                    if (isEditable) {
+                        try {
+                            if (window.AndroidNotificationBridge && window.AndroidNotificationBridge.showKeyboard) {
+                                window.AndroidNotificationBridge.showKeyboard();
+                            }
+                        } catch(_) {}
+                    }
+                }
+
+                document.addEventListener('focusin', function(e) {
+                    triggerNativeKeyboard(e.target);
+                }, true);
+
+                document.addEventListener('click', function(e) {
+                    triggerNativeKeyboard(e.target);
+                }, true);
 
                 try {
                     Object.defineProperty(Document.prototype, 'hidden', {
@@ -495,8 +538,26 @@ class MainActivity : AppCompatActivity() {
         """.trimIndent()
     }
 
-    @SuppressLint("SetJavaScriptEnabled")
+    @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
     private fun setupWebView() {
+        binding.webView.apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
+            requestFocus(View.FOCUS_DOWN)
+        }
+
+        binding.webView.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP -> {
+                    if (!v.hasFocus()) {
+                        v.requestFocus()
+                        v.requestFocusFromTouch()
+                    }
+                }
+            }
+            false
+        }
+
         val webSettings = binding.webView.settings
         webSettings.javaScriptEnabled = true
         webSettings.domStorageEnabled = true

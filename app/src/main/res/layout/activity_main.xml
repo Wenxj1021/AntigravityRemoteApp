@@ -11,6 +11,8 @@
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
         android:background="?attr/colorSurface" />
 
     <!-- Material 3 线性进度条 -->
