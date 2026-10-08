@@ -367,7 +367,35 @@ class MainActivity : AppCompatActivity() {
                     };
                 }
 
-                // 4. 后台标签页标题变更检测保底机制（当 Agent 任务完成或需审批修改网页标题时）
+                // 4. 原生 Antigravity 专有通道: 注入 window.nativeNotifications (Antigravity CLI 内部 npc 原生服务)
+                window.nativeNotifications = {
+                    send: function(a) {
+                        a = a || {};
+                        var title = a.title || "Antigravity Remote";
+                        var body = a.body || "Agent 需要您的操作或已完成任务";
+                        var tag = a.id || "";
+                        notifyNative(title, { body: body, tag: tag });
+                        return Promise.resolve();
+                    },
+                    onClicked: function(cb) {
+                        window._onNativeNotifClicked = cb;
+                    },
+                    openSystemPreferences: function() {
+                        try {
+                            if (window.AndroidNotificationBridge && window.AndroidNotificationBridge.requestPermission) {
+                                window.AndroidNotificationBridge.requestPermission();
+                            }
+                        } catch(_) {}
+                        return Promise.resolve();
+                    }
+                };
+
+                // 5. 绕过 !document.hasFocus() 限制，确保无论当前页面是否处于前台对焦均允许通知
+                try {
+                    document.hasFocus = function() { return false; };
+                } catch(_) {}
+
+                // 6. 后台标签页标题变更检测保底机制（当 Agent 任务完成或需审批修改网页标题时）
                 var lastTitle = "";
                 function checkTitle() {
                     var t = document.title || "";
@@ -379,12 +407,48 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+
+                // 7. DOM 变化主动感知: 监听「下一步 / Proceed / Approve / Review / Confirm / 确认」交互按钮或弹窗出现
+                var notifiedActions = new Set();
+                function scanActionButtons() {
+                    try {
+                        var buttons = document.querySelectorAll('button, [role="button"], a.btn, .action-button');
+                        buttons.forEach(function(b) {
+                            var text = (b.innerText || '').trim();
+                            if (!text || text.length > 30) return;
+                            var isActionBtn = /^(proceed|approve|allow|review|confirm|submit|yes|下一步|允许|批准|确认|提交|继续)$/i.test(text);
+                            if (isActionBtn && b.offsetParent !== null) {
+                                var actionId = text + '_' + (b.getAttribute('id') || b.className || text);
+                                if (!notifiedActions.has(actionId)) {
+                                    notifiedActions.add(actionId);
+                                    notifyNative("Antigravity: 需要您的操作", "Agent 正在等待您点击「" + text + "」以继续任务");
+                                }
+                            }
+                        });
+                    } catch(_) {}
+                }
+
                 try {
-                    var titleTarget = document.querySelector('title');
-                    if (titleTarget) {
-                        new MutationObserver(checkTitle).observe(titleTarget, { subtree: true, characterData: true, childList: true });
+                    var targetRoot = document.documentElement || document.body;
+                    if (targetRoot) {
+                        new MutationObserver(function() {
+                            checkTitle();
+                            scanActionButtons();
+                        }).observe(targetRoot, { subtree: true, characterData: true, childList: true });
+                        setTimeout(scanActionButtons, 1500);
                     }
                 } catch(_) {}
+
+                // 8. 跨 Frame 消息通道: 监听可能由子 Frame 发送到父级窗口的审批/通知消息
+                window.addEventListener('message', function(evt) {
+                    try {
+                        if (!evt || !evt.data) return;
+                        var d = evt.data;
+                        if (typeof d === 'string' && (d.includes('attention') || d.includes('permission') || d.includes('waiting'))) {
+                            notifyNative("Antigravity Remote", d);
+                        }
+                    } catch(_) {}
+                });
             })();
         """.trimIndent()
     }
