@@ -65,4 +65,21 @@
     <string name="webview_status_supported">支援</string>
     <string name="webview_status_unsupported">不支援</string>
     <string name="webview_status_unknown">未知</string>
+
+    <!-- Logs -->
+    <string name="logs_menu_title">執行日誌</string>
+    <string name="logs_menu_desc">查看網絡連線、背景保活與通知接收記錄</string>
+    <string name="logs_dialog_title">執行日誌</string>
+    <string name="logs_count_format">共 %d 條日誌記錄</string>
+    <string name="logs_empty">暫無日誌記錄</string>
+    <string name="logs_copy">複製全部</string>
+    <string name="logs_copied_toast">日誌已複製至剪貼簿！</string>
+    <string name="logs_clear">清除</string>
+    <string name="logs_cleared_toast">日誌已清除</string>
+
+    <!-- Exit App -->
+    <string name="exit_app">退出應用程式</string>
+    <string name="exit_app_desc">停止背景保活服務並完全退出</string>
+    <string name="exit_app_confirm_title">退出應用程式</string>
+    <string name="exit_app_confirm_message">確定要完全退出應用程式嗎？退出後將停止背景保活服務，期間將無法接收 Agent 任務提醒。</string>
 </resources>

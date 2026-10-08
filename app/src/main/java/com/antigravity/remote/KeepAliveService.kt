@@ -33,12 +33,14 @@ class KeepAliveService : Service() {
         fun start(context: Context) {
             val intent = Intent(context, KeepAliveService::class.java)
             try {
+                AppLogger.i("KeepAliveService", "启动前台保活服务...")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {
                     context.startService(intent)
                 }
             } catch (e: Exception) {
+                AppLogger.e("KeepAliveService", "启动保活服务失败: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -46,8 +48,10 @@ class KeepAliveService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, KeepAliveService::class.java)
             try {
+                AppLogger.i("KeepAliveService", "停止前台保活服务...")
                 context.stopService(intent)
             } catch (e: Exception) {
+                AppLogger.e("KeepAliveService", "停止保活服务失败: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -57,6 +61,7 @@ class KeepAliveService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        AppLogger.i("KeepAliveService", "服务 onCreate: 创建保活通知渠道并获取 PARTIAL_WAKE_LOCK")
         createNotificationChannel()
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as? PowerManager
@@ -67,6 +72,7 @@ class KeepAliveService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        AppLogger.i("KeepAliveService", "服务 onStartCommand: 提升至前台运行 (FOREGROUND_SERVICE)")
         val notificationIntent = Intent(this, MainActivity::class.java).apply {
             this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -102,6 +108,7 @@ class KeepAliveService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        AppLogger.i("KeepAliveService", "服务 onDestroy: 释放 WakeLock 并退出前台服务")
         try {
             wakeLock?.let {
                 if (it.isHeld) it.release()

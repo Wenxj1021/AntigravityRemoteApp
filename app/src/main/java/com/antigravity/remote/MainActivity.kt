@@ -49,6 +49,7 @@ import androidx.core.view.updatePadding
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.antigravity.remote.databinding.ActivityMainBinding
+import com.antigravity.remote.databinding.BottomSheetLogsBinding
 import com.antigravity.remote.databinding.BottomSheetMenuBinding
 import com.antigravity.remote.databinding.BottomSheetWebviewInfoBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -74,9 +75,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivitiesIfAvailable(application)
         super.onCreate(savedInstanceState)
+        AppLogger.i("MainActivity", "应用启动 onCreate")
 
         // 规避从桌面启动器返回已有任务时，系统重复创建根 Activity 导致页面重载重置的经典 Bug
         if (!isTaskRoot && intent.hasCategory(Intent.CATEGORY_LAUNCHER) && intent.action == Intent.ACTION_MAIN) {
+            AppLogger.d("MainActivity", "检测到非根 Task 启动器 Intent，终止冗余 Activity")
             finish()
             return
         }
@@ -98,6 +101,7 @@ class MainActivity : AppCompatActivity() {
         initKeepAliveService()
 
         if (savedInstanceState != null) {
+            AppLogger.d("MainActivity", "恢复 savedInstanceState 状态")
             binding.webView.restoreState(savedInstanceState)
         } else {
             loadTargetUrl()
@@ -106,6 +110,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun initKeepAliveService() {
         val isKeepAlive = prefs.getBoolean("keep_alive_enabled", true)
+        AppLogger.i("MainActivity", "保活设置状态: keep_alive_enabled=$isKeepAlive")
         if (isKeepAlive) {
             KeepAliveService.start(this)
         }
@@ -151,7 +156,10 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.RequestPermission()
         ) { isGranted ->
             if (isGranted) {
+                AppLogger.i("Permission", "通知权限获取成功 (POST_NOTIFICATIONS granted)")
                 Toast.makeText(this, R.string.notification_permission_granted_toast, Toast.LENGTH_SHORT).show()
+            } else {
+                AppLogger.w("Permission", "用户拒绝了通知权限 (POST_NOTIFICATIONS denied)")
             }
         }
     }
@@ -174,7 +182,10 @@ class MainActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED
         ) {
+            AppLogger.d("Permission", "未获得通知权限，唤起系统授权弹窗")
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            AppLogger.d("Permission", "通知权限已具备，无需重复请求")
         }
     }
 
@@ -185,6 +196,7 @@ class MainActivity : AppCompatActivity() {
         val now = System.currentTimeMillis()
         val contentKey = "$title::$body"
         if (now - lastNotificationTime < 1500L && lastNotificationContent == contentKey) {
+            AppLogger.d("Notification", "抑制短时间内完全相同的重复通知: $title")
             return
         }
         lastNotificationTime = now
@@ -229,6 +241,9 @@ class MainActivity : AppCompatActivity() {
         ) {
             val notificationId = (System.currentTimeMillis() % 100000).toInt()
             NotificationManagerCompat.from(this).notify(notificationId, notification)
+            AppLogger.i("Notification", "通知成功派发 [ID=$notificationId]: $title | $body")
+        } else {
+            AppLogger.w("Notification", "通知发送失败: 应用未获得 POST_NOTIFICATIONS 权限")
         }
     }
 
@@ -238,6 +253,7 @@ class MainActivity : AppCompatActivity() {
         fun postNotification(title: String?, body: String?, tag: String?) {
             val safeTitle = if (title.isNullOrBlank()) "Antigravity Remote" else title
             val safeBody = body ?: ""
+            AppLogger.i("NotificationBridge", "收到网页 JS 通知: title='$safeTitle', body='$safeBody', tag='$tag'")
             runOnUiThread {
                 sendNotification(safeTitle, safeBody)
             }
@@ -246,6 +262,7 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         @Suppress("unused")
         fun requestPermission() {
+            AppLogger.i("NotificationBridge", "收到网页 JS 权限请求")
             runOnUiThread {
                 requestNotificationPermission()
             }
@@ -518,6 +535,7 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                AppLogger.i("WebView", "开始加载页面: $url")
                 binding.progressBar.visibility = View.VISIBLE
                 binding.errorContainer.visibility = View.GONE
                 view?.evaluateJavascript(getNotificationPolyfillScript(), null)
@@ -525,6 +543,7 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                AppLogger.i("WebView", "页面加载完成: $url")
                 binding.progressBar.visibility = View.GONE
 
                 if (!url.isNullOrBlank() && !url.startsWith("data:") && !url.startsWith("about:")) {
@@ -541,9 +560,21 @@ class MainActivity : AppCompatActivity() {
                 error: WebResourceError?
             ) {
                 super.onReceivedError(view, request, error)
+                AppLogger.e("WebView", "加载出错 [code=${error?.errorCode}]: ${error?.description}, url=${request?.url}")
                 if (request?.isForMainFrame == true) {
                     binding.progressBar.visibility = View.GONE
                     binding.errorContainer.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                if (request?.isForMainFrame == true) {
+                    AppLogger.w("WebView", "HTTP 状态异常 [code=${errorResponse?.statusCode}]: ${request.url}")
                 }
             }
 
@@ -583,8 +614,25 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                if (consoleMessage != null) {
+                    val msg = "[Line ${consoleMessage.lineNumber()}] ${consoleMessage.message()}"
+                    when (consoleMessage.messageLevel()) {
+                        android.webkit.ConsoleMessage.MessageLevel.ERROR -> AppLogger.e("WebConsole", msg)
+                        android.webkit.ConsoleMessage.MessageLevel.WARNING -> AppLogger.w("WebConsole", msg)
+                        else -> {
+                            if (consoleMessage.message().contains("AG Bridge") || consoleMessage.message().contains("Antigravity")) {
+                                AppLogger.d("WebConsole", msg)
+                            }
+                        }
+                    }
+                }
+                return super.onConsoleMessage(consoleMessage)
+            }
+
             override fun onPermissionRequest(request: PermissionRequest?) {
                 // 授权网页申请的媒体/通知等权限
+                AppLogger.d("WebChromeClient", "网页申请权限: ${request?.resources?.joinToString()}")
                 request?.grant(request.resources)
             }
 
@@ -751,9 +799,19 @@ class MainActivity : AppCompatActivity() {
             showWebViewInfoBottomSheet()
         }
 
+        sheetBinding.itemLogs.setOnClickListener {
+            dialog.dismiss()
+            showLogsBottomSheet()
+        }
+
         sheetBinding.itemLogout.setOnClickListener {
             dialog.dismiss()
             performLogout()
+        }
+
+        sheetBinding.itemExit.setOnClickListener {
+            dialog.dismiss()
+            performExit()
         }
 
         dialog.show()
@@ -959,12 +1017,78 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, R.string.webview_info_copied_toast, Toast.LENGTH_SHORT).show()
     }
 
+    private fun showLogsBottomSheet() {
+        val dialog = BottomSheetDialog(this)
+        val logsBinding = BottomSheetLogsBinding.inflate(layoutInflater)
+        dialog.setContentView(logsBinding.root)
+
+        dialog.behavior.apply {
+            state = BottomSheetBehavior.STATE_EXPANDED
+            skipCollapsed = true
+            isFitToContents = true
+        }
+        dialog.setOnShowListener {
+            dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        }
+
+        fun updateLogsView() {
+            val count = AppLogger.getCount()
+            logsBinding.tvLogCount.text = getString(R.string.logs_count_format, count)
+            val logsText = AppLogger.getAllLogsText()
+            logsBinding.tvLogsContent.text = if (logsText.isBlank()) {
+                getString(R.string.logs_empty)
+            } else {
+                logsText
+            }
+            logsBinding.scrollLogs.post {
+                logsBinding.scrollLogs.fullScroll(View.FOCUS_DOWN)
+            }
+        }
+
+        updateLogsView()
+
+        logsBinding.btnCopyLogs.setOnClickListener {
+            val text = AppLogger.getAllLogsText()
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Runtime Logs", text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(this, R.string.logs_copied_toast, Toast.LENGTH_SHORT).show()
+        }
+
+        logsBinding.btnClearLogs.setOnClickListener {
+            AppLogger.clear()
+            updateLogsView()
+            Toast.makeText(this, R.string.logs_cleared_toast, Toast.LENGTH_SHORT).show()
+        }
+
+        logsBinding.btnCloseLogs.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun performExit() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.exit_app_confirm_title)
+            .setMessage(R.string.exit_app_confirm_message)
+            .setIcon(R.drawable.ic_power)
+            .setPositiveButton(R.string.exit_app) { _, _ ->
+                AppLogger.i("MainActivity", "用户确认退出应用，正在停止服务并结束进程...")
+                KeepAliveService.stop(this)
+                finishAffinity()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
     private fun performLogout() {
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.logout_confirm_title)
             .setMessage(R.string.logout_confirm_message)
             .setIcon(R.drawable.ic_logout)
             .setPositiveButton(R.string.logout) { _, _ ->
+                AppLogger.i("MainActivity", "用户确认退出登录，清空 Cookie 与本地缓存")
                 val cookieManager = CookieManager.getInstance()
                 cookieManager.removeAllCookies {
                     cookieManager.flush()
@@ -995,6 +1119,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        AppLogger.i("MainActivity", "界面切回前台 onResume")
         binding.webView.onResume()
         binding.webView.resumeTimers()
         updateLauncherIconTheme()
@@ -1002,6 +1127,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
+        AppLogger.i("MainActivity", "界面切入后台 onPause (保持保活与定时器)")
         // 不暂停 WebView，允许后台常驻接收 WebSocket 与 Agent 任务通知，并保持定时器活跃
         CookieManager.getInstance().flush()
         binding.webView.resumeTimers()
@@ -1014,6 +1140,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        AppLogger.i("MainActivity", "Activity 销毁 onDestroy")
         binding.webView.destroy()
         super.onDestroy()
     }

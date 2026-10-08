@@ -65,4 +65,21 @@
     <string name="webview_status_supported">支持</string>
     <string name="webview_status_unsupported">不支持</string>
     <string name="webview_status_unknown">未知</string>
+
+    <!-- Logs -->
+    <string name="logs_menu_title">运行日志</string>
+    <string name="logs_menu_desc">查看网络连接、后台保活与通知接收记录</string>
+    <string name="logs_dialog_title">运行日志</string>
+    <string name="logs_count_format">共 %d 条日志记录</string>
+    <string name="logs_empty">暂无日志记录</string>
+    <string name="logs_copy">复制全部</string>
+    <string name="logs_copied_toast">日志已复制到剪贴板！</string>
+    <string name="logs_clear">清空</string>
+    <string name="logs_cleared_toast">日志已清空</string>
+
+    <!-- Exit App -->
+    <string name="exit_app">退出应用</string>
+    <string name="exit_app_desc">停止后台保活服务并完全退出</string>
+    <string name="exit_app_confirm_title">退出应用</string>
+    <string name="exit_app_confirm_message">确定要完全退出应用吗？退出后将停止后台保活服务，期间将无法接收 Agent 任务提醒。</string>
 </resources>

@@ -10,8 +10,8 @@ android {
         applicationId = "com.antigravity.remote"
         minSdk = 36
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.3.3"
+        versionCode = 8
+        versionName = "1.3.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

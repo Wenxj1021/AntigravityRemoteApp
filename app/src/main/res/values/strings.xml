@@ -65,4 +65,21 @@
     <string name="webview_status_supported">Supported</string>
     <string name="webview_status_unsupported">Unsupported</string>
     <string name="webview_status_unknown">Unknown</string>
+
+    <!-- Logs -->
+    <string name="logs_menu_title">Runtime Logs</string>
+    <string name="logs_menu_desc">View connection, keep-alive &amp; notification logs</string>
+    <string name="logs_dialog_title">Runtime Logs</string>
+    <string name="logs_count_format">Total %d log entries</string>
+    <string name="logs_empty">No log records yet</string>
+    <string name="logs_copy">Copy All</string>
+    <string name="logs_copied_toast">Logs copied to clipboard!</string>
+    <string name="logs_clear">Clear</string>
+    <string name="logs_cleared_toast">Logs cleared</string>
+
+    <!-- Exit App -->
+    <string name="exit_app">Exit Application</string>
+    <string name="exit_app_desc">Stop background service and close application</string>
+    <string name="exit_app_confirm_title">Exit Application</string>
+    <string name="exit_app_confirm_message">Are you sure you want to exit? The background keep-alive service will stop and you will not receive task notifications while the app is closed.</string>
 </resources>
