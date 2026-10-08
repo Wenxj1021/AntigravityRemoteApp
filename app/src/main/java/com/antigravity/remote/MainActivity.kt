@@ -444,34 +444,12 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // 7. DOM 变化主动感知: 监听「下一步 / Proceed / Approve / Review / Confirm / 确认」交互按钮或弹窗出现
-                var notifiedActions = new Set();
-                function scanActionButtons() {
-                    try {
-                        var buttons = document.querySelectorAll('button, [role="button"], a.btn, .action-button');
-                        buttons.forEach(function(b) {
-                            var text = (b.innerText || '').trim();
-                            if (!text || text.length > 30) return;
-                            var isActionBtn = /^(proceed|approve|allow|review|confirm|submit|yes|下一步|允许|批准|确认|提交|继续)$/i.test(text);
-                            if (isActionBtn && b.offsetParent !== null) {
-                                var actionId = text + '_' + (b.getAttribute('id') || b.className || text);
-                                if (!notifiedActions.has(actionId)) {
-                                    notifiedActions.add(actionId);
-                                    notifyNative("Antigravity: 需要您的操作", "Agent 正在等待您点击「" + text + "」以继续任务");
-                                }
-                            }
-                        });
-                    } catch(_) {}
-                }
-
                 try {
                     var targetRoot = document.documentElement || document.body;
                     if (targetRoot) {
                         new MutationObserver(function() {
                             checkTitle();
-                            scanActionButtons();
                         }).observe(targetRoot, { subtree: true, characterData: true, childList: true });
-                        setTimeout(scanActionButtons, 1500);
                     }
                 } catch(_) {}
 
