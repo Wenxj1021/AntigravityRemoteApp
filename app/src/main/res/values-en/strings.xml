@@ -25,6 +25,16 @@
     <string name="channel_name">Antigravity Remote</string>
     <string name="channel_desc">Agent task executions, approvals, and status alerts</string>
 
+    <!-- Keep-Alive -->
+    <string name="keep_alive_title">Background Sync &amp; Keep-Alive</string>
+    <string name="keep_alive_desc">Maintain real-time connection to receive task alerts in background</string>
+    <string name="keep_alive_channel_name">Background Sync Service</string>
+    <string name="keep_alive_channel_desc">Maintains continuous connection for Agent task updates</string>
+    <string name="keep_alive_running_title">Antigravity Remote</string>
+    <string name="keep_alive_running_desc">Real-time sync active, listening for Agent tasks</string>
+    <string name="keep_alive_enabled_toast">Background real-time sync enabled</string>
+    <string name="keep_alive_disabled_toast">Background sync disabled</string>
+
     <!-- WebView Info -->
     <string name="webview_info_menu_title">WebView Information</string>
     <string name="webview_info_menu_desc">Inspect local WebView provider, version &amp; features</string>

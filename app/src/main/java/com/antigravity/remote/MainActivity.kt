@@ -95,11 +95,19 @@ class MainActivity : AppCompatActivity() {
         setupListeners()
         updateFabPosition()
         setupBackNavigation()
+        initKeepAliveService()
 
         if (savedInstanceState != null) {
             binding.webView.restoreState(savedInstanceState)
         } else {
             loadTargetUrl()
+        }
+    }
+
+    private fun initKeepAliveService() {
+        val isKeepAlive = prefs.getBoolean("keep_alive_enabled", true)
+        if (isKeepAlive) {
+            KeepAliveService.start(this)
         }
     }
 
@@ -390,19 +398,47 @@ class MainActivity : AppCompatActivity() {
                     }
                 };
 
-                // 5. 绕过 !document.hasFocus() 限制，确保无论当前页面是否处于前台对焦均允许通知
+                // 5. 页面活跃与对焦状态伪装：确保即使置于后台，仍向页面汇报为活跃且可见状态
                 try {
-                    document.hasFocus = function() { return false; };
+                    Document.prototype.hasFocus = function() { return true; };
+                    document.hasFocus = function() { return true; };
                 } catch(_) {}
 
-                // 6. 后台标签页标题变更检测保底机制（当 Agent 任务完成或需审批修改网页标题时）
+                try {
+                    Object.defineProperty(Document.prototype, 'hidden', {
+                        get: function() { return false; },
+                        configurable: true
+                    });
+                    Object.defineProperty(Document.prototype, 'visibilityState', {
+                        get: function() { return 'visible'; },
+                        configurable: true
+                    });
+                    Object.defineProperty(document, 'hidden', {
+                        get: function() { return false; },
+                        configurable: true
+                    });
+                    Object.defineProperty(document, 'visibilityState', {
+                        get: function() { return 'visible'; },
+                        configurable: true
+                    });
+                } catch(_) {}
+
+                // 阻止任何 visibilitychange 事件向页面组件分发（避免网页组件主动注销/暂停 WebRTC 与长连接）
+                window.addEventListener('visibilitychange', function(e) {
+                    try { e.stopImmediatePropagation(); } catch(_) {}
+                }, true);
+                document.addEventListener('visibilitychange', function(e) {
+                    try { e.stopImmediatePropagation(); } catch(_) {}
+                }, true);
+
+                // 6. 标签页标题变更检测保底机制（当 Agent 任务完成或需审批修改网页标题时）
                 var lastTitle = "";
                 function checkTitle() {
                     var t = document.title || "";
                     if (t && t !== lastTitle) {
                         lastTitle = t;
                         var m = t.match(/^[\(\[\u25CF\u2022\u2713\u2705\d\s\-\:]+([^\(\[\u25CF\u2022\u2713\u2705].*)$/);
-                        if (document.hidden && m && m[1]) {
+                        if (m && m[1]) {
                             notifyNative("Antigravity Remote", m[1].trim());
                         }
                     }
@@ -449,6 +485,17 @@ class MainActivity : AppCompatActivity() {
                         }
                     } catch(_) {}
                 });
+
+                // 9. Web Worker 心跳引擎：Web Worker 定时器完全不受 Chromium 后台主线程节流限制
+                try {
+                    var workerBlob = new Blob([
+                        "setInterval(function() { postMessage('heartbeat'); }, 1000);"
+                    ], { type: "application/javascript" });
+                    var heartbeatWorker = new Worker(URL.createObjectURL(workerBlob));
+                    heartbeatWorker.onmessage = function() {
+                        // 周期性唤醒事件队列
+                    };
+                } catch(_) {}
             })();
         """.trimIndent()
     }
@@ -466,6 +513,7 @@ class MainActivity : AppCompatActivity() {
         webSettings.allowFileAccess = false
         webSettings.allowContentAccess = true
         webSettings.cacheMode = WebSettings.LOAD_DEFAULT
+        webSettings.mediaPlaybackRequiresUserGesture = false
 
         WebView.setWebContentsDebuggingEnabled(true)
 
@@ -704,6 +752,22 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, R.string.test_notification_sent_toast, Toast.LENGTH_SHORT).show()
         }
 
+        val isKeepAlive = prefs.getBoolean("keep_alive_enabled", true)
+        sheetBinding.switchKeepAlive.isChecked = isKeepAlive
+
+        sheetBinding.itemKeepAlive.setOnClickListener {
+            val newState = !sheetBinding.switchKeepAlive.isChecked
+            sheetBinding.switchKeepAlive.isChecked = newState
+            prefs.edit { putBoolean("keep_alive_enabled", newState) }
+            if (newState) {
+                KeepAliveService.start(this)
+                Toast.makeText(this, R.string.keep_alive_enabled_toast, Toast.LENGTH_SHORT).show()
+            } else {
+                KeepAliveService.stop(this)
+                Toast.makeText(this, R.string.keep_alive_disabled_toast, Toast.LENGTH_SHORT).show()
+            }
+        }
+
         sheetBinding.itemWebViewInfo.setOnClickListener {
             dialog.dismiss()
             showWebViewInfoBottomSheet()
@@ -932,6 +996,7 @@ class MainActivity : AppCompatActivity() {
                 binding.webView.clearHistory()
                 binding.webView.clearFormData()
                 prefs.edit { clear() }
+                KeepAliveService.stop(this)
                 binding.errorContainer.visibility = View.GONE
                 binding.webView.loadUrl(getString(R.string.default_url))
                 Toast.makeText(this, R.string.logout_success, Toast.LENGTH_SHORT).show()
@@ -953,17 +1018,20 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         binding.webView.onResume()
+        binding.webView.resumeTimers()
         updateLauncherIconTheme()
     }
 
     override fun onPause() {
         super.onPause()
-        // 不暂停 WebView，允许后台常驻接收 WebSocket 与 Agent 任务通知
+        // 不暂停 WebView，允许后台常驻接收 WebSocket 与 Agent 任务通知，并保持定时器活跃
         CookieManager.getInstance().flush()
+        binding.webView.resumeTimers()
     }
 
     override fun onStop() {
         CookieManager.getInstance().flush()
+        binding.webView.resumeTimers()
         super.onStop()
     }
 

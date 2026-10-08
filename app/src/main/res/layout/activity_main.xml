@@ -6,8 +6,8 @@
     android:layout_height="match_parent"
     android:background="?attr/colorSurface">
 
-    <!-- WebView: 直接放置，无外部下拉刷新拦截，保证聊天历史流畅上下滚动 -->
-    <WebView
+    <!-- PersistentWebView: 后台保活并始终维持活跃可见上报的 WebView -->
+    <com.antigravity.remote.PersistentWebView
         android:id="@+id/webView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

@@ -25,6 +25,16 @@
     <string name="channel_name">Antigravity Remote</string>
     <string name="channel_desc">Agent 任務執行、命令審批與遠端狀態通知</string>
 
+    <!-- Keep-Alive -->
+    <string name="keep_alive_title">背景常駐與即時同步</string>
+    <string name="keep_alive_desc">置於背景時保持資料連線，即時接收通知</string>
+    <string name="keep_alive_channel_name">背景常駐同步服務</string>
+    <string name="keep_alive_channel_desc">保持背景與 Antigravity 的即時通訊</string>
+    <string name="keep_alive_running_title">Antigravity Remote</string>
+    <string name="keep_alive_running_desc">背景即時同步已開啟，正在監聽 Agent 任務</string>
+    <string name="keep_alive_enabled_toast">已開啟背景常駐與即時同步</string>
+    <string name="keep_alive_disabled_toast">已關閉背景常駐</string>
+
     <!-- WebView Info -->
     <string name="webview_info_menu_title">WebView 資訊</string>
     <string name="webview_info_menu_desc">查看本機 WebView 提供者、核心版本與功能</string>
