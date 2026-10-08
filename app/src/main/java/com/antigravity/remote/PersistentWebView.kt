@@ -3,8 +3,6 @@ package com.antigravity.remote
 import android.content.Context
 import android.util.AttributeSet
 import android.view.View
-import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputConnection
 import android.webkit.WebView
 
 /**
@@ -13,9 +11,9 @@ import android.webkit.WebView
  * 核心原理：
  * 1. 视窗可见性：重写 onWindowVisibilityChanged 与 onVisibilityChanged 始终上报 View.VISIBLE，
  *    阻止 Chromium 内核进入休眠节流与冻结长连接。
- * 2. 输入对焦与输入法绑定：显式开启 isFocusableInTouchMode 并声明 onCheckIsTextEditor = true，
- *    确保用户点击对话框输入区域时，原生 View 树与 InputMethodManager 能够将焦点指派给本 WebView，
- *    无缝呼起系统软键盘。
+ * 2. 焦点支持：在触摸模式下开启 isFocusableInTouchMode，使 Chromium 内核能够正常获得原生视图焦点，
+ *    完全保留 WebView 默认的 onCheckIsTextEditor() 与 onCreateInputConnection()，
+ *    确保富文本编辑与系统输入法双向通道畅通无阻，避免输入内容丢失。
  */
 class PersistentWebView @JvmOverloads constructor(
     context: Context,
@@ -26,24 +24,9 @@ class PersistentWebView @JvmOverloads constructor(
     init {
         isFocusable = true
         isFocusableInTouchMode = true
-        isClickable = true
-    }
-
-    override fun onCheckIsTextEditor(): Boolean {
-        // 向系统 InputMethodManager 明确标识本组件支持文本输入交互
-        return true
-    }
-
-    override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection? {
-        val connection = super.onCreateInputConnection(outAttrs)
-        if (outAttrs.imeOptions == 0) {
-            outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE or EditorInfo.IME_FLAG_NO_EXTRACT_UI
-        }
-        return connection
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
-        // 关键：始终向底层 Chromium 汇报 View.VISIBLE
         super.onWindowVisibilityChanged(View.VISIBLE)
     }
 
