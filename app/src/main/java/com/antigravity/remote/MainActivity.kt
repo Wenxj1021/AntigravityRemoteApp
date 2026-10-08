@@ -618,6 +618,13 @@ class MainActivity : AppCompatActivity() {
             dialog.behavior.state = BottomSheetBehavior.STATE_EXPANDED
         }
 
+        sheetBinding.headerContainer.setOnClickListener {
+            dialog.dismiss()
+            val defaultUrl = getString(R.string.default_url)
+            binding.errorContainer.visibility = View.GONE
+            binding.webView.loadUrl(defaultUrl)
+        }
+
         sheetBinding.itemRefresh.setOnClickListener {
             dialog.dismiss()
             binding.errorContainer.visibility = View.GONE
